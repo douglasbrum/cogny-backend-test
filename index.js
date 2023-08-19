@@ -74,10 +74,19 @@ const axios = require('axios');
         }
     };
 
+    const calculateTotalPopulationFromNode = async (jsonData) => {
+        const relevantYears = [2020, 2019, 2018];
+        const relevantData = jsonData.data.filter(item => relevantYears.includes(item['ID Year']));
+        const totalPopulation = relevantData.map(item => item.Population).reduce((acc, population) => acc + population, 0);
+        return totalPopulation;
+    }
+
     try {
         await migrationUp();
 
         const record_value = await fetchData();
+        const totalPopulation = await calculateTotalPopulationFromNode(record_value.data);
+        console.log(`The total population for the years 2020, 2019, and 2018 calculated from NodeJS is ${totalPopulation}`);
 
         //exemplo de insert
         const result1 = await db[DATABASE_SCHEMA].api_data.insert({
