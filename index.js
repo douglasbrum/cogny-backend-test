@@ -81,22 +81,37 @@ const axios = require('axios');
         return totalPopulation;
     }
 
+    const calculateTotalPopulationFromDb = async () => {
+        try {
+            const result = await db.query(`
+                SELECT SUM((item->>'Population')::INT) AS total_population 
+                FROM (
+                    SELECT jsonb_array_elements(doc_record->'data')::jsonb AS item 
+                    FROM ${DATABASE_SCHEMA}.api_data
+                ) AS subquery 
+                WHERE (item->>'ID Year')::INT IN (2020, 2019, 2018);`,
+                { build: true },
+                { single: true }
+            );
+            return parseInt(result.total_population);
+        } catch (error) {
+            throw error;
+        }
+    }
+
     try {
         await migrationUp();
 
         const record_value = await fetchData();
-        const totalPopulation = await calculateTotalPopulationFromNode(record_value.data);
+        let totalPopulation = await calculateTotalPopulationFromNode(record_value.data);
         console.log(`The total population for the years 2020, 2019, and 2018 calculated from NodeJS is ${totalPopulation}`);
 
         await db[DATABASE_SCHEMA].api_data.insert({
             doc_record: record_value.data
         });
 
-        //exemplo select
-        const result2 = await db[DATABASE_SCHEMA].api_data.find({
-            is_active: true
-        });
-        console.log('result2 >>>', result2);
+        totalPopulation = await calculateTotalPopulationFromDb();
+        console.log(`The total population for the years 2020, 2019, and 2018 calculated from PostgreSQL is ${totalPopulation}`);
 
     } catch (e) {
         console.log(e.message)
