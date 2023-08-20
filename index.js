@@ -63,10 +63,11 @@ const axios = require('axios');
         });
     };
 
-    const fetchData = async () => {
+    /* Returns the fetched data from source */
+    const fetchData = async (src) => {
         try {
-            response = await axios.get('https://datausa.io/api/data?drilldowns=Nation&measures=Population');
-            return response;
+            response = await axios.get(src);
+            return response.data;
         }
         catch (e) {
             console.log(e.message);
@@ -102,12 +103,12 @@ const axios = require('axios');
     try {
         await migrationUp();
 
-        const record_value = await fetchData();
-        let totalPopulation = await calculateTotalPopulationFromNode(record_value.data);
+        const populationJson = await fetchData('https://datausa.io/api/data?drilldowns=Nation&measures=Population');
+        let totalPopulation = await calculateTotalPopulationFromNode(populationJson);
         console.log(`The total population for the years 2020, 2019, and 2018 calculated from NodeJS is ${totalPopulation}`);
 
         await db[DATABASE_SCHEMA].api_data.insert({
-            doc_record: record_value.data
+            doc_record: populationJson
         });
 
         totalPopulation = await calculateTotalPopulationFromDb();
