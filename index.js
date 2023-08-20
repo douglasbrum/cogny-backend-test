@@ -63,6 +63,16 @@ const axios = require('axios');
         });
     };
 
+    /* Returns filtered object list from a flat JSON object where key matches a certain value. */
+    const filterFlat = (json, key, values) => {
+        return json.data.filter(item => values.includes(item[key]));
+    };
+    
+    /* Returns the sum of values that matches a property*/
+    const calculateObjectPropertySum = (objects, property) => {
+        return objects.map(item => item[property]).reduce((acc, value) => acc + value, 0);
+    };
+
     /* Returns the fetched data from source */
     const fetchData = async (src) => {
         try {
@@ -75,12 +85,10 @@ const axios = require('axios');
         }
     };
 
-    const calculateTotalPopulationFromNode = async (jsonData) => {
-        const relevantYears = [2020, 2019, 2018];
-        const relevantData = jsonData.data.filter(item => relevantYears.includes(item['ID Year']));
-        const totalPopulation = relevantData.map(item => item.Population).reduce((acc, population) => acc + population, 0);
-        return totalPopulation;
-    }
+    const calculatePopulationByYear = (populationJson, years) => {
+        const relevantData = filterFlat(populationJson, 'ID Year', years);
+        return calculateObjectPropertySum(relevantData, 'Population');
+    };
 
     const calculateTotalPopulationFromDb = async () => {
         try {
@@ -104,15 +112,18 @@ const axios = require('axios');
         await migrationUp();
 
         const populationJson = await fetchData('https://datausa.io/api/data?drilldowns=Nation&measures=Population');
-        let totalPopulation = await calculateTotalPopulationFromNode(populationJson);
-        console.log(`The total population for the years 2020, 2019, and 2018 calculated from NodeJS is ${totalPopulation}`);
+        const populationFromFetch = calculatePopulationByYear(populationJson, [2020, 2019, 2018]);
 
         await db[DATABASE_SCHEMA].api_data.insert({
             doc_record: populationJson
         });
 
-        totalPopulation = await calculateTotalPopulationFromDb();
-        console.log(`The total population for the years 2020, 2019, and 2018 calculated from PostgreSQL is ${totalPopulation}`);
+        const totalPopulation = await calculateTotalPopulationFromDb();
+        
+        //Logs results
+        console.log(`Total population for the years 2020, 2019 and 2018.`)
+        console.log('NodeJS:',  populationFromFetch);
+        console.log('PostgreSQL:', totalPopulation);
 
     } catch (e) {
         console.log(e.message)
