@@ -106,6 +106,8 @@ const axios = require('axios');
     try {
         await migrationUp();
 
+        db[DATABASE_SCHEMA].api_data.destroy({});
+
         const populationJson = await fetchData('https://datausa.io/api/data?drilldowns=Nation&measures=Population');
         await db[DATABASE_SCHEMA].api_data.insert({ doc_record: populationJson });
 
