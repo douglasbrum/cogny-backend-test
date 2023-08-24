@@ -106,16 +106,15 @@ const axios = require('axios');
     try {
         await migrationUp();
 
+        db[DATABASE_SCHEMA].api_data.destroy({});
+
         const populationJson = await fetchData('https://datausa.io/api/data?drilldowns=Nation&measures=Population');
-        await db[DATABASE_SCHEMA].api_data.insert({ doc_record: populationJson });
+        await populationJson.data.forEach(item => db[DATABASE_SCHEMA].api_data.insert({ doc_record: item }));
 
         const populationObject = await queryOne(`
-            SELECT SUM((item->>'Population')::INT) AS total_population 
-            FROM (
-                SELECT jsonb_array_elements(doc_record->'data')::jsonb AS item 
-                FROM ${DATABASE_SCHEMA}.api_data
-                ) AS jsonItems
-            WHERE (item->>'ID Year')::INT IN (2020, 2019, 2018);
+            SELECT SUM((doc_record->>'Population')::INT) AS total_population 
+            FROM ${DATABASE_SCHEMA}.api_data
+            WHERE (doc_record->>'ID Year')::INT IN (2020, 2019, 2018);
         `);
 
         const populationFromDB = + populationObject.total_population;
